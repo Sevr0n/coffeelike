@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @Getter
 @Entity
-@Table(name = "coffee_type", schema = "public")
+@Table(name = "coffee_type", schema = "coffee")
 public class Coffee {
     @Id
     private Long id;
