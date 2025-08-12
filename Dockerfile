@@ -1,19 +1,17 @@
-# 1. образ с Java 21
+# ========== Stage 1: Build ==========
 FROM eclipse-temurin:21-jdk AS build
-
-# 2. Копируем Gradle wrapper и исходники
 WORKDIR /app
+
 COPY gradlew .
 COPY gradle ./gradle
 COPY build.gradle .
 COPY settings.gradle .
 COPY src ./src
 
-# 3. Собираем jar
 RUN ./gradlew bootJar --no-daemon
 
-# 4. Финальный образ
-FROM eclipse-temurin:21-jdk
+# ========== Stage 2: Run ==========
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
