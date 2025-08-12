@@ -1,21 +1,33 @@
-# 1. образ с Java 21
+# ========== Stage 1: Build jar ==========
 FROM eclipse-temurin:21-jdk AS build
-
-# 2. Копируем Gradle wrapper и исходники
 WORKDIR /app
+
 COPY gradlew .
 COPY gradle ./gradle
 COPY build.gradle .
 COPY settings.gradle .
 COPY src ./src
 
-# 3. Собираем jar
 RUN ./gradlew bootJar --no-daemon
 
-# 4. Финальный образ
-FROM eclipse-temurin:21-jdk
-WORKDIR /app
-COPY --from=build /app/build/libs/*.jar app.jar
+# ========== Stage 2: Create custom JRE ==========
+FROM eclipse-temurin:21-jdk AS jre-build
+WORKDIR /jre
 
+# Собираем JRE с модулями для Spring Boot + Tomcat
+RUN $JAVA_HOME/bin/jlink \
+    --add-modules java.base,java.logging,java.sql,java.naming,java.desktop,jdk.unsupported,java.management,java.security.jgss,java.instrument,java.xml,java.net.http \
+    --strip-debug \
+    --no-man-pages \
+    --no-header-files \
+    --compress=2 \
+    --output /jre-minimal
+
+
+# Stage 3: Final runtime
+FROM gcr.io/distroless/cc AS final
+WORKDIR /app
+COPY --from=jre-build /jre-minimal /jre
+COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/jre/bin/java", "-jar", "app.jar"]
