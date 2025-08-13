@@ -9,28 +9,18 @@ COPY settings.gradle .
 COPY src ./src
 
 RUN ./gradlew bootJar --no-daemon -x test
-RUN jar xf build/libs/*.jar
 
-RUN jdeps --ignore-missing-deps \
-    --recursive \
-    --multi-release 21 \
-    --print-module-deps \
-    --class-path 'BOOT-INF/lib/*' \
-    build/libs/*.jar > deps.info
-
-# Stage 2: Minimal JRE
+# Stage 2: Minimal JRE (ручной набор модулей)
 FROM eclipse-temurin:21-jdk-alpine AS jre-build
 WORKDIR /jre
 
-COPY --from=build /app/deps.info .
-
 RUN $JAVA_HOME/bin/jlink \
-    --add-modules $(cat deps.info) \
+    --add-modules java.base,java.logging,java.sql,java.naming,java.desktop,jdk.unsupported,java.management,java.security.jgss,java.instrument,java.xml \
     --strip-java-debug-attributes \
     --no-man-pages \
     --no-header-files \
     --strip-debug \
-    --compress=zip-9 \
+    --compress=2 \
     --output /jre-minimal
 
 # Stage 3: Final runtime
