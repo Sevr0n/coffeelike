@@ -1,5 +1,5 @@
 # ========== Stage 1: Build jar ==========
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 COPY gradlew .
@@ -11,7 +11,7 @@ COPY src ./src
 RUN ./gradlew bootJar --no-daemon
 
 # ========== Stage 2: Create custom JRE ==========
-FROM eclipse-temurin:21-jdk AS jre-build
+FROM eclipse-temurin:21-jdk-alpine AS jdk-build
 WORKDIR /jre
 
 # Собираем JRE с модулями для Spring Boot + Tomcat
@@ -25,9 +25,9 @@ RUN $JAVA_HOME/bin/jlink \
 
 
 # Stage 3: Final runtime
-FROM gcr.io/distroless/cc AS final
+FROM alpine:3.20 AS final
 WORKDIR /app
-COPY --from=jre-build /jre-minimal /jre
+COPY --from=jdk-build /jre-minimal /jre
 COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8081
 ENTRYPOINT ["/jre/bin/java", "-jar", "app.jar"]
